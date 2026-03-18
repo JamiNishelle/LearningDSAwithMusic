@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Musical Palindromes</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0d0d0f;
+  --surface:  #141418;
+  --card:     #1c1c22;
+  --border:   #2e2e3a;
+  --gold:     #c9a84c;
+  --gold-dim: #7a6430;
+  --teal:     #3ecfb2;
+  --rose:     #e05c7a;
+  --lilac:    #a78bfa;
+  --text:     #e8e6e0;
+  --muted:    #6b6880;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(201,168,76,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(62,207,178,.05) 0%, transparent 55%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,.018) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.018) 40px);
+  pointer-events:none;
+}
+
+.wrap { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:40px 24px 80px; }
+
+header { text-align:center; margin-bottom:52px; }
+header h1 {
+  font-family:'Playfair Display', serif;
+  font-size: clamp(28px,5vw,56px);
+  font-weight:900;
+  letter-spacing:-1px;
+  line-height:1.1;
+  color: var(--gold);
+  text-shadow: 0 0 60px rgba(201,168,76,.35);
+}
+header h1 em { font-style:normal; color:var(--teal); }
+.subtitle {
+  margin-top:10px;
+  font-size:11px;
+  letter-spacing:3.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.section-label {
+  font-size:10px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── tabs ── */
+.tabs {
+  display:flex;
+  gap:4px;
+  margin-bottom:28px;
+  border-bottom:1px solid var(--border);
+  padding-bottom:0;
+}
+.tab {
+  padding:10px 20px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  margin-bottom:-1px;
+  transition:all .2s;
+}
+.tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+.tab:hover:not(.active) { color:var(--text); }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* ── card ── */
+.card {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px 24px;
+  margin-bottom:20px;
+}
+
+/* ── global controls ── */
+.global-ctrl {
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-bottom:24px;
+}
+.ctrl-label {
+  font-size:11px;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+select {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+  padding:7px 12px;
+  outline:none;
+  cursor:pointer;
+}
+input[type=range] {
+  -webkit-appearance:none;
+  height:4px;
+  border-radius:2px;
+  background: linear-gradient(to right, var(--gold) 0%, var(--gold) var(--pct,50%), var(--border) var(--pct,50%));
+  outline:none;
+  cursor:pointer;
+  width:100px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none;
+  width:14px; height:14px;
+  border-radius:50%;
+  background:var(--gold);
+  box-shadow:0 0 8px rgba(201,168,76,.5);
+  cursor:pointer;
+}
+.slider-val {
+  font-size:13px;
+  font-weight:600;
+  color:var(--gold);
+  min-width:36px;
+}
+
+/* ── buttons ── */
+.btn {
+  padding:9px 20px;
+  border-radius:10px;
+  border:1px solid;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .18s ease;
+  letter-spacing:1px;
+  white-space:nowrap;
+}
+.btn:disabled { opacity:.3; cursor:not-allowed; }
+.btn-gold  { background:rgba(201,168,76,.15); border-color:var(--gold);  color:var(--gold); }
+.btn-gold:hover:not(:disabled)  { background:var(--gold);  color:#000; }
+.btn-teal  { background:rgba(62,207,178,.12); border-color:var(--teal);  color:var(--teal); }
+.btn-teal:hover:not(:disabled)  { background:var(--teal);  color:#000; }
+.btn-rose  { background:rgba(224,92,122,.1);  border-color:var(--rose);  color:var(--rose); }
+.btn-rose:hover:not(:disabled)  { background:var(--rose);  color:#fff; }
+.btn-lilac { background:rgba(167,139,250,.1); border-color:var(--lilac); color:var(--lilac); }
+.btn-lilac:hover:not(:disabled) { background:var(--lilac); color:#000; }
+
+.btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ── scale table ── */
+.scale-table {
+  width:100%;
+  border-collapse:collapse;
+}
+.scale-table th {
+  font-size:9px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  text-align:left;
+  padding:8px 12px;
+  border-bottom:1px solid var(--border);
+}
+.scale-table td {
+  padding:10px 12px;
+  font-size:12px;
+  border-bottom:1px solid rgba(46,46,58,.5);
+  vertical-align:middle;
+}
+.scale-table tr:last-child td { border-bottom:none; }
+.scale-table tr { cursor:pointer; transition:background .15s; }
+.scale-table tr:hover td { background:rgba(255,255,255,.03); }
+.scale-table tr.selected td { background:rgba(201,168,76,.07); }
+.scale-row-name { color:var(--text); font-weight:600; }
+.scale-row-intervals {
+  display:flex;
+  gap:4px;
+  flex-wrap:wrap;
+}
+.interval-chip {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:24px; height:24px;
+  border-radius:6px;
+  font-size:11px;
+  font-weight:600;
+  border:1px solid var(--border);
+  color:var(--muted);
+  background:var(--surface);
+  transition:all .3s ease;
+}
+.interval-chip.match-left  { border-color:var(--teal); color:var(--teal); background:rgba(62,207,178,.15); }
+.interval-chip.match-right { border-color:var(--teal); color:var(--teal); background:rgba(62,207,178,.15); }
+.interval-chip.center      { border-color:var(--lilac); color:var(--lilac); background:rgba(167,139,250,.15); }
+.interval-chip.mismatch    { border-color:var(--rose); color:var(--rose); background:rgba(224,92,122,.1); }
+.interval-chip.playing     { border-color:var(--gold); color:#000; background:var(--gold); box-shadow:0 0 10px rgba(201,168,76,.6); transform:scale(1.2); }
+.palindrome-badge {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 10px;
+  border-radius:20px;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:1px;
+  white-space:nowrap;
+}
+.palindrome-badge.yes { background:rgba(62,207,178,.15); border:1px solid var(--teal); color:var(--teal); }
+.palindrome-badge.no  { background:rgba(224,92,122,.1);  border:1px solid var(--rose); color:var(--rose); }
+
+/* ── deque animation ── */
+.deque-section { margin-top:20px; }
+.deque-wrap {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  min-height:64px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.deque-wrap::-webkit-scrollbar { display:none; }
+.deque-end-label {
+  font-size:9px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  flex-shrink:0;
+}
+.deque-items {
+  display:flex;
+  gap:6px;
+  flex:1;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.deque-item {
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  transition:all .35s cubic-bezier(.34,1.4,.64,1);
+}
+.deque-pill {
+  width:32px; height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:600;
+  border:1.5px solid var(--border);
+  color:var(--muted);
+  background:var(--card);
+  transition:all .3s ease;
+}
+.deque-pill.pop-left  { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,.2); box-shadow:0 0 12px rgba(201,168,76,.3); }
+.deque-pill.pop-right { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,.2); box-shadow:0 0 12px rgba(201,168,76,.3); }
+.deque-pill.matched   { border-color:var(--teal); color:var(--teal); background:rgba(62,207,178,.15); }
+.deque-pill.mismatch  { border-color:var(--rose); color:var(--rose); background:rgba(224,92,122,.1); }
+.deque-step-label { font-size:8px; color:var(--muted); letter-spacing:1px; }
+
+.deque-log {
+  margin-top:10px;
+  font-size:11px;
+  color:var(--muted);
+  min-height:22px;
+  transition:color .3s;
+}
+.deque-log .hl { color:var(--gold); }
+.deque-log .ok { color:var(--teal); }
+.deque-log .fail { color:var(--rose); }
+
+/* ── piano roll ── */
+.pianoroll {
+  display:flex;
+  align-items:flex-end;
+  gap:3px;
+  height:100px;
+  overflow-x:auto;
+  padding:8px 0 24px;
+  scrollbar-width:none;
+}
+.pianoroll::-webkit-scrollbar { display:none; }
+.note-bar {
+  flex-shrink:0;
+  width:22px;
+  border-radius:4px 4px 0 0;
+  background: linear-gradient(180deg, var(--teal) 0%, rgba(62,207,178,.4) 100%);
+  position:relative;
+  transition: all .25s ease;
+  cursor:pointer;
+  min-height:6px;
+}
+.note-bar.active {
+  background: linear-gradient(180deg, var(--gold) 0%, rgba(201,168,76,.6) 100%);
+  box-shadow:0 0 14px rgba(201,168,76,.6), 0 -3px 0 var(--gold);
+}
+.note-bar.played {
+  background: linear-gradient(180deg, rgba(62,207,178,.3) 0%, rgba(62,207,178,.1) 100%);
+}
+.note-label {
+  position:absolute;
+  bottom:-18px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:7px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+/* ── fibonacci section ── */
+.fib-word-display {
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  letter-spacing:3px;
+  line-height:1.8;
+  word-break:break-all;
+  padding:16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin-bottom:12px;
+  min-height:52px;
+}
+.fib-char { display:inline; transition:color .3s, text-shadow .3s; }
+.fib-char.zero { color:var(--teal); }
+.fib-char.one  { color:var(--lilac); }
+.fib-char.trimmed-0 { color:rgba(62,207,178,.25); }
+.fib-char.trimmed-1 { color:rgba(167,139,250,.25); }
+.fib-char.trimmed-tail { color:var(--rose); text-decoration:line-through; opacity:.5; }
+
+.fib-meta {
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  font-size:11px;
+  color:var(--muted);
+  margin-bottom:14px;
+}
+.fib-meta span { color:var(--gold); }
+
+.fib-build-steps {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  max-height:200px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color: var(--border) transparent;
+  padding-right:4px;
+}
+.fib-step {
+  display:grid;
+  grid-template-columns: 36px 1fr;
+  gap:12px;
+  align-items:start;
+  font-size:11px;
+  opacity:.5;
+  transition:opacity .4s;
+}
+.fib-step.active { opacity:1; }
+.fib-step-n { color:var(--gold); font-weight:600; }
+.fib-step-word {
+  color:var(--muted);
+  word-break:break-all;
+  line-height:1.6;
+}
+.fib-step-word .part-a { color:var(--teal); }
+.fib-step-word .part-b { color:var(--lilac); }
+
+/* ── status bar ── */
+.status-bar {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:11px 16px;
+  font-size:11px;
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:18px;
+}
+.status-dot {
+  width:8px; height:8px;
+  border-radius:50%;
+  background:var(--border);
+  flex-shrink:0;
+  transition:background .3s;
+}
+.status-dot.active { background:var(--teal); box-shadow:0 0 8px var(--teal); animation:pulse 1s infinite; }
+.status-dot.done   { background:var(--gold); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── waveform ── */
+.waveform {
+  display:flex;
+  align-items:center;
+  gap:2px;
+  height:18px;
+}
+.waveform span {
+  display:inline-block;
+  width:3px;
+  border-radius:2px;
+  background:var(--teal);
+  opacity:.5;
+  animation:wave var(--d,.6s) ease-in-out infinite alternate;
+}
+@keyframes wave { from{height:3px} to{height:15px} }
+
+/* ── result banner ── */
+.result-banner {
+  padding:14px 20px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:.5px;
+  display:none;
+  align-items:center;
+  gap:10px;
+  margin-top:14px;
+}
+.result-banner.show { display:flex; }
+.result-banner.palindrome { background:rgba(62,207,178,.12); border:1px solid var(--teal); color:var(--teal); }
+.result-banner.not-palindrome { background:rgba(224,92,122,.08); border:1px solid var(--rose); color:var(--rose); }
+.result-icon { font-size:20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Musical <em>Palindromes</em></h1>
+    <div class="subtitle">Scales · Fibonacci Words · Deque Checks</div>
+  </header>
+
+  <!-- global controls -->
+  <div class="card global-ctrl">
+    <span class="ctrl-label">Root</span>
+    <select id="rootSelect">
+      <option value="60">C4</option>
+      <option value="61">C#4</option>
+      <option value="62">D4</option>
+      <option value="63">Eb4</option>
+      <option value="64">E4</option>
+      <option value="65">F4</option>
+      <option value="66">F#4</option>
+      <option value="67">G4</option>
+      <option value="68">Ab4</option>
+      <option value="69">A4</option>
+      <option value="70">Bb4</option>
+      <option value="71">B4</option>
+    </select>
+    <span class="ctrl-label" style="margin-left:8px;">Tempo</span>
+    <input type="range" id="tempoSlider" min="60" max="240" value="120" step="5"
+           oninput="updateTempo(this)">
+    <span class="slider-val" id="tempoVal">120 BPM</span>
+    <span class="ctrl-label" style="margin-left:8px;">Waveform</span>
+    <select id="waveSelect">
+      <option value="sine">Sine</option>
+      <option value="triangle">Triangle</option>
+      <option value="sawtooth">Sawtooth</option>
+      <option value="square">Square</option>
+    </select>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('scales',this)">Scale Palindromes</button>
+    <button class="tab" onclick="switchTab('fibonacci',this)">Fibonacci Word</button>
+  </div>
+
+  <!-- ══════════════ TAB: SCALES ══════════════ -->
+  <div id="panel-scales" class="tab-panel active">
+
+    <!-- deque animation -->
+    <div class="section-label">Deque Check — <span id="selectedScaleName" style="color:var(--gold);">select a scale below</span></div>
+    <div class="card">
+      <div class="deque-wrap">
+        <span class="deque-end-label">front</span>
+        <div class="deque-items" id="dequeItems"></div>
+        <span class="deque-end-label">back</span>
+      </div>
+      <div class="deque-log" id="dequeLog">↓ Click a scale row or its ▶ button to animate the palindrome check</div>
+
+      <div class="result-banner" id="scaleResult">
+        <span class="result-icon"></span>
+        <span id="scaleResultText"></span>
+      </div>
+    </div>
+
+    <!-- piano roll -->
+    <div class="section-label">Piano Roll</div>
+    <div class="card">
+      <div class="status-bar" id="scaleStatus">
+        <div class="status-dot" id="scaleDot"></div>
+        <span class="status-text" id="scaleStatusText">Select a scale and press Play</span>
+        <div class="waveform" id="scaleWave" style="display:none;">
+          <span style="--d:.4s"></span><span style="--d:.6s"></span>
+          <span style="--d:.5s"></span><span style="--d:.7s"></span>
+          <span style="--d:.45s"></span>
+        </div>
+      </div>
+      <div class="pianoroll" id="scalePianoRoll"></div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-teal" id="scalePlayBtn" onclick="playScale()" disabled>▶ Play Scale</button>
+        <button class="btn btn-rose" id="scaleStopBtn" onclick="stopScale()" disabled>■ Stop</button>
+      </div>
+    </div>
+
+    <!-- scale table -->
+    <div class="section-label">All Scales — Interval Palindrome Check</div>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="scale-table" id="scaleTable">
+        <thead>
+          <tr>
+            <th>Scale</th>
+            <th>Intervals</th>
+            <th>Category</th>
+            <th>Palindrome?</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="scaleBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ TAB: FIBONACCI ══════════════ -->
+  <div id="panel-fibonacci" class="tab-panel">
+
+    <div class="section-label">Fibonacci Word — Recursive Construction</div>
+    <div class="card">
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+        <span class="ctrl-label">Depth n =</span>
+        <input type="range" id="fibNSlider" min="1" max="12" value="6" step="1"
+               oninput="updateFibN(this)">
+        <span class="slider-val" id="fibNVal">6</span>
+        <button class="btn btn-gold" onclick="buildFibWord()">Build F(n)</button>
+      </div>
+
+      <div class="fib-build-steps" id="fibBuildSteps"></div>
+    </div>
+
+    <div class="section-label">F(n) Word &amp; Palindrome Check</div>
+    <div class="card">
+      <div class="fib-meta" id="fibMeta">
+        <div>Length: <span id="fibLen">—</span></div>
+        <div>Trimmed length: <span id="fibTrimLen">—</span></div>
+        <div>Fibonacci number: <span id="fibFibNum">—</span></div>
+      </div>
+
+      <div style="font-size:10px; letter-spacing:2px; color:var(--muted); margin-bottom:6px; text-transform:uppercase;">
+        F(n) &nbsp;<span style="color:var(--rose);">(last 2 chars struck)</span>
+      </div>
+      <div class="fib-word-display" id="fibWordDisplay">—</div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+        <button class="btn btn-lilac" id="fibCheckBtn" onclick="animateFibCheck()" disabled>Animate Deque Check</button>
+        <button class="btn btn-teal"  id="fibPlayBtn"  onclick="playFibWord()" disabled>▶ Play as Music</button>
+        <button class="btn btn-rose"  id="fibStopBtn"  onclick="stopFib()" disabled>■ Stop</button>
+      </div>
+
+      <!-- deque for fibonacci -->
+      <div class="section-label" style="margin-top:4px;">Deque Check on Trimmed Word</div>
+      <div class="deque-wrap">
+        <span class="deque-end-label">front</span>
+        <div class="deque-items" id="fibDequeItems"></div>
+        <span class="deque-end-label">back</span>
+      </div>
+      <div class="deque-log" id="fibDequeLog">Build a Fibonacci word first</div>
+      <div class="result-banner" id="fibResult">
+        <span class="result-icon"></span>
+        <span id="fibResultText"></span>
+      </div>
+    </div>
+
+    <!-- piano roll for fibonacci -->
+    <div class="section-label">Fibonacci Word → Music (0 = root, 1 = major 2nd up)</div>
+    <div class="card">
+      <div class="status-bar" id="fibStatus">
+        <div class="status-dot" id="fibDot"></div>
+        <span class="status-text" id="fibStatusText">Build and play a Fibonacci word</span>
+        <div class="waveform" id="fibWave" style="display:none;">
+          <span style="--d:.4s"></span><span style="--d:.6s"></span>
+          <span style="--d:.5s"></span><span style="--d:.7s"></span>
+          <span style="--d:.45s"></span>
+        </div>
+      </div>
+      <div class="pianoroll" id="fibPianoRoll"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────
+const NOTE_NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+const SCALES = [
+  { name:'Major (Ionian)',         cat:'Heptatonic', intervals:[2,2,1,2,2,2,1] },
+  { name:'Dorian',                 cat:'Heptatonic', intervals:[2,1,2,2,2,1,2] },
+  { name:'Phrygian',               cat:'Heptatonic', intervals:[1,2,2,2,1,2,2] },
+  { name:'Lydian',                 cat:'Heptatonic', intervals:[2,2,2,1,2,2,1] },
+  { name:'Mixolydian',             cat:'Heptatonic', intervals:[2,2,1,2,2,1,2] },
+  { name:'Natural Minor (Aeolian)',cat:'Heptatonic', intervals:[2,1,2,2,1,2,2] },
+  { name:'Locrian',                cat:'Heptatonic', intervals:[1,2,2,1,2,2,2] },
+  { name:'Harmonic Minor',         cat:'Heptatonic', intervals:[2,1,2,2,1,3,1] },
+  { name:'Melodic Minor',          cat:'Heptatonic', intervals:[2,1,2,2,2,2,1] },
+  { name:'Major Pentatonic',       cat:'Pentatonic',  intervals:[2,2,3,2,3] },
+  { name:'Minor Pentatonic',       cat:'Pentatonic',  intervals:[3,2,2,3,2] },
+  { name:'Blues',                  cat:'Hexatonic',   intervals:[3,2,1,1,3,2] },
+  { name:'Whole Tone',             cat:'Symmetric',   intervals:[2,2,2,2,2,2] },
+  { name:'Diminished (W-H)',       cat:'Symmetric',   intervals:[2,1,2,1,2,1,2,1] },
+  { name:'Diminished (H-W)',       cat:'Symmetric',   intervals:[1,2,1,2,1,2,1,2] },
+  { name:'Chromatic',              cat:'Symmetric',   intervals:[1,1,1,1,1,1,1,1,1,1,1,1] },
+];
+
+function isPalindrome(arr) {
+  // deque check — matches Python implementation
+  const dq = [...arr];
+  while (dq.length > 1) {
+    if (dq.shift() !== dq.pop()) return false;
+  }
+  return true;
+}
+
+function midiToName(midi) {
+  return NOTE_NAMES[midi % 12] + Math.floor(midi / 12 - 1);
+}
+
+function intervalsToMidi(root, intervals) {
+  const notes = [root];
+  for (const iv of intervals) notes.push(notes.at(-1) + iv);
+  return notes;
+}
+
+// ─────────────────────────────────────────────
+//  AUDIO
+// ─────────────────────────────────────────────
+let audioCtx = null;
+let stopFlag = false;
+let activeNodes = [];
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function midiToFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function playNote(freq, startTime, duration, wave = 'sine') {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = wave;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(0.35, startTime + 0.01);
+  gain.gain.linearRampToValueAtTime(0.25, startTime + duration * 0.6);
+  gain.gain.linearRampToValueAtTime(0, startTime + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.05);
+  activeNodes.push(osc, gain);
+}
+
+function stopAll() {
+  stopFlag = true;
+  activeNodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch(e){} });
+  activeNodes = [];
+}
+
+let tempo = 120;
+function noteDuration() { return 60 / tempo; }
+
+function updateTempo(el) {
+  const v = +el.value;
+  const pct = (v - +el.min) / (+el.max - +el.min) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById('tempoVal').textContent = v + ' BPM';
+  tempo = v;
+}
+
+// ─────────────────────────────────────────────
+//  TABS
+// ─────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+//  SCALE TABLE
+// ─────────────────────────────────────────────
+let selectedScale = null;
+let scalePlayTimer = null;
+
+function buildScaleTable() {
+  const tbody = document.getElementById('scaleBody');
+  tbody.innerHTML = '';
+  SCALES.forEach((s, i) => {
+    const pal = isPalindrome(s.intervals);
+    const tr = document.createElement('tr');
+    tr.dataset.idx = i;
+    tr.onclick = () => selectScale(i, tr);
+
+    // colour intervals: matched pairs teal, center lilac (palindromic), else plain
+    const palChips = colorIntervals(s.intervals);
+
+    tr.innerHTML = `
+      <td class="scale-row-name">${s.name}</td>
+      <td><div class="scale-row-intervals">${palChips}</div></td>
+      <td style="color:var(--muted);font-size:11px;">${s.cat}</td>
+      <td>
+        <span class="palindrome-badge ${pal ? 'yes' : 'no'}">
+          ${pal ? '✓ palindrome' : '✗ not palindrome'}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-teal" style="padding:5px 12px;font-size:10px;"
+                onclick="event.stopPropagation();selectAndPlay(${i})">▶</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function colorIntervals(arr) {
+  const n = arr.length;
+  const tags = new Array(n).fill('');
+
+  // find matching pairs from outside in (palindrome deque logic)
+  let lo = 0, hi = n - 1;
+  let allMatch = true;
+  while (lo < hi) {
+    if (arr[lo] === arr[hi]) {
+      tags[lo] = 'match-left';
+      tags[hi] = 'match-right';
+    } else {
+      tags[lo] = 'mismatch';
+      tags[hi] = 'mismatch';
+      allMatch = false;
+    }
+    lo++; hi--;
+  }
+  if (lo === hi) tags[lo] = 'center';
+
+  return arr.map((v, i) =>
+    `<span class="interval-chip ${tags[i]}">${v}</span>`
+  ).join('');
+}
+
+function selectScale(idx, trEl) {
+  document.querySelectorAll('#scaleBody tr').forEach(r => r.classList.remove('selected'));
+  trEl.classList.add('selected');
+  selectedScale = SCALES[idx];
+  document.getElementById('selectedScaleName').textContent = selectedScale.name;
+  document.getElementById('scalePlayBtn').disabled = false;
+
+  renderScalePianoRoll(idx);
+  animateDequeCheck(selectedScale.intervals, 'dequeItems', 'dequeLog', 'scaleResult', 'scaleResultText');
+}
+
+function selectAndPlay(idx) {
+  const tr = document.querySelector(`#scaleBody tr[data-idx="${idx}"]`);
+  selectScale(idx, tr);
+  setTimeout(playScale, 800);
+}
+
+function renderScalePianoRoll(idx) {
+  const root = +document.getElementById('rootSelect').value;
+  const notes = intervalsToMidi(root, SCALES[idx].intervals);
+  const roll = document.getElementById('scalePianoRoll');
+  roll.innerHTML = '';
+  const minM = Math.min(...notes), maxM = Math.max(...notes);
+  notes.forEach((m, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'note-bar';
+    bar.id = 'sb' + i;
+    const h = Math.round(((m - minM) / (maxM - minM + 1)) * 76 + 20);
+    bar.style.height = h + 'px';
+    bar.title = midiToName(m);
+    const label = document.createElement('div');
+    label.className = 'note-label';
+    label.textContent = midiToName(m);
+    bar.appendChild(label);
+    bar.onclick = () => { const ctx=getAudioCtx(); playNote(midiToFreq(m), ctx.currentTime, 0.5, document.getElementById('waveSelect').value); };
+    roll.appendChild(bar);
+  });
+}
+
+async function playScale() {
+  if (!selectedScale) return;
+  stopAll();
+  stopFlag = false;
+
+  const root = +document.getElementById('rootSelect').value;
+  const notes = intervalsToMidi(root, selectedScale.intervals);
+  const wave = document.getElementById('waveSelect').value;
+  const dur = noteDuration();
+  const ctx = getAudioCtx();
+
+  document.getElementById('scalePlayBtn').disabled = true;
+  document.getElementById('scaleStopBtn').disabled = false;
+  document.getElementById('scaleDot').className = 'status-dot active';
+  document.getElementById('scaleWave').style.display = 'flex';
+  document.getElementById('scaleStatusText').innerHTML =
+    `Playing <span class="hl">${selectedScale.name}</span> — ${isPalindrome(selectedScale.intervals) ? '<span style="color:var(--teal)">palindromic intervals</span>' : 'non-palindromic intervals'}`;
+
+  const bars  = document.querySelectorAll('#scalePianoRoll .note-bar');
+  const chips = document.querySelectorAll('#scaleBody tr.selected .interval-chip');
+
+  for (let i = 0; i < notes.length; i++) {
+    if (stopFlag) break;
+    bars.forEach(b => b.classList.remove('active'));
+    chips.forEach(c => c.classList.remove('playing'));
+    bars[i] && bars[i].classList.add('active');
+    if (i < chips.length) chips[i].classList.add('playing');
+    playNote(midiToFreq(notes[i]), ctx.currentTime, dur * 0.88, wave);
+    await sleep(dur * 1000);
+    bars[i] && bars[i].classList.replace('active','played');
+    if (i < chips.length) chips[i].classList.remove('playing');
+  }
+
+  if (!stopFlag) {
+    document.getElementById('scaleDot').className = 'status-dot done';
+    document.getElementById('scaleWave').style.display = 'none';
+    document.getElementById('scaleStatusText').innerHTML = `Done — <span class="hl">${selectedScale.name}</span>`;
+  }
+  document.getElementById('scalePlayBtn').disabled = false;
+  document.getElementById('scaleStopBtn').disabled = true;
+}
+
+function stopScale() {
+  stopAll();
+  document.getElementById('scaleDot').className = 'status-dot';
+  document.getElementById('scaleWave').style.display = 'none';
+  document.getElementById('scaleStatusText').textContent = 'Stopped';
+  document.getElementById('scalePlayBtn').disabled = false;
+  document.getElementById('scaleStopBtn').disabled = true;
+  document.querySelectorAll('#scalePianoRoll .note-bar').forEach(b => {
+    b.classList.remove('active','played');
+  });
+  document.querySelectorAll('#scaleBody tr.selected .interval-chip').forEach(c => {
+    c.classList.remove('playing');
+  });
+}
+
+// ─────────────────────────────────────────────
+//  DEQUE ANIMATION  (shared by both tabs)
+// ─────────────────────────────────────────────
+let dequeAnimRunning = false;
+
+async function animateDequeCheck(arr, itemsId, logId, resultId, resultTextId) {
+  if (dequeAnimRunning) return;
+  dequeAnimRunning = true;
+
+  const itemsEl = document.getElementById(itemsId);
+  const logEl   = document.getElementById(logId);
+  const resEl   = document.getElementById(resultId);
+  const resTxt  = document.getElementById(resultTextId);
+  resEl.className = 'result-banner';
+
+  // build initial deque display
+  const dq = [...arr];
+  function renderDeque(highlightLeft = -1, highlightRight = -1, state = 'idle') {
+    itemsEl.innerHTML = dq.map((v, i) => {
+      let cls = '';
+      if (i === 0 && state === 'comparing') cls = 'pop-left';
+      else if (i === dq.length - 1 && state === 'comparing') cls = 'pop-right';
+      else if (highlightLeft === i || highlightRight === i) cls = state === 'match' ? 'matched' : 'mismatch';
+      return `<div class="deque-item">
+        <div class="deque-pill ${cls}">${v}</div>
+        <div class="deque-step-label">[${i}]</div>
+      </div>`;
+    }).join('');
+  }
+
+  renderDeque();
+  logEl.innerHTML = `<span class="hl">Deque loaded:</span> [${arr.join(', ')}]`;
+  await sleep(600);
+
+  let step = 0;
+  while (dq.length > 1) {
+    // highlight both ends about to be popped
+    renderDeque(0, dq.length - 1, 'comparing');
+    logEl.innerHTML = `Step ${++step}: popleft() = <span class="hl">${dq[0]}</span>  ·  pop() = <span class="hl">${dq.at(-1)}</span>`;
+    await sleep(700);
+
+    const left = dq.shift();
+    const right = dq.pop();
+    const match = left === right;
+
+    renderDeque(-1, -1, match ? 'match' : 'mismatch');
+    logEl.innerHTML = match
+      ? `Step ${step}: <span class="ok">${left} === ${right} ✓ match</span>`
+      : `Step ${step}: <span class="fail">${left} ≠ ${right} ✗ mismatch → not a palindrome</span>`;
+
+    await sleep(650);
+
+    if (!match) {
+      resEl.innerHTML = `<span class="result-icon">✗</span><span id="${resultTextId}">Not a palindrome</span>`;
+      resEl.className = 'result-banner show not-palindrome';
+      dequeAnimRunning = false;
+      return;
+    }
+  }
+
+  itemsEl.innerHTML = dq.length === 1
+    ? `<div class="deque-item"><div class="deque-pill" style="border-color:var(--lilac);color:var(--lilac)">${dq[0]}</div><div class="deque-step-label">center</div></div>`
+    : `<div style="color:var(--teal);font-size:12px;">empty</div>`;
+  logEl.innerHTML = `<span class="ok">All pairs matched → palindrome ✓</span>`;
+
+  resEl.innerHTML = `<span class="result-icon">✓</span><span id="${resultTextId}">Palindrome! Reads the same from both ends.</span>`;
+  resEl.className = 'result-banner show palindrome';
+  dequeAnimRunning = false;
+}
+
+// ─────────────────────────────────────────────
+//  FIBONACCI WORD
+// ─────────────────────────────────────────────
+const fibCache = {};
+
+function fibWord(n) {
+  if (n in fibCache) return fibCache[n];
+  if (n === 1) return fibCache[1] = '0';
+  if (n === 2) return fibCache[2] = '01';
+  return fibCache[n] = fibWord(n - 1) + fibWord(n - 2);
+}
+
+let currentFibN = 6;
+let currentFibWord = '';
+
+function updateFibN(el) {
+  const v = +el.value;
+  const pct = (v - +el.min) / (+el.max - +el.min) * 100;
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById('fibNVal').textContent = v;
+  currentFibN = v;
+}
+
+function buildFibWord() {
+  const n = currentFibN;
+  const stepsEl = document.getElementById('fibBuildSteps');
+  stepsEl.innerHTML = '';
+
+  // show build steps
+  for (let i = 1; i <= n; i++) {
+    const w = fibWord(i);
+    const step = document.createElement('div');
+    step.className = 'fib-step' + (i === n ? ' active' : '');
+    step.id = 'fibstep' + i;
+
+    let wordHTML;
+    if (i <= 2) {
+      wordHTML = `<span class="part-a">${w}</span>`;
+    } else {
+      const wa = fibWord(i - 1), wb = fibWord(i - 2);
+      const shortA = wa.length > 40 ? wa.slice(0, 37) + '…' : wa;
+      const shortB = wb.length > 20 ? wb.slice(0, 17) + '…' : wb;
+      wordHTML = `<span class="part-a">${shortA}</span><span class="part-b">${shortB}</span>`;
+    }
+    step.innerHTML = `<div class="fib-step-n">F(${i})</div><div class="fib-step-word">${wordHTML} <span style="color:var(--muted);font-size:10px;">(len=${w.length})</span></div>`;
+    stepsEl.appendChild(step);
+  }
+
+  // scroll to bottom
+  stepsEl.scrollTop = stepsEl.scrollHeight;
+
+  currentFibWord = fibWord(n);
+  renderFibWord(n, currentFibWord);
+
+  document.getElementById('fibCheckBtn').disabled = false;
+  document.getElementById('fibPlayBtn').disabled = false;
+  document.getElementById('fibDequeLog').textContent = 'Press "Animate Deque Check" to run the palindrome check on the trimmed word';
+  document.getElementById('fibResult').className = 'result-banner';
+}
+
+function renderFibWord(n, word) {
+  const trimmed = word.length > 2 ? word.slice(0, -2) : word;
+  const tail    = word.length > 2 ? word.slice(-2) : '';
+
+  document.getElementById('fibLen').textContent     = word.length;
+  document.getElementById('fibTrimLen').textContent = trimmed.length;
+  document.getElementById('fibFibNum').textContent  = word.length + ' (Fibonacci number)';
+
+  // render character-by-character
+  const display = document.getElementById('fibWordDisplay');
+  const maxShow = 200;
+  let html = '';
+  const showWord = word.length <= maxShow ? word : word.slice(0, maxShow - 3) + '...';
+  const tailStart = word.length > 2 ? word.length - 2 : Infinity;
+
+  for (let i = 0; i < showWord.length; i++) {
+    const ch = showWord[i];
+    if (ch === '.') { html += '<span style="color:var(--muted)">…</span>'; break; }
+    const isTail = word.length > 2 && i >= word.length - 2 && i < word.length;
+    if (isTail) {
+      html += `<span class="fib-char trimmed-tail">${ch}</span>`;
+    } else {
+      html += `<span class="fib-char ${ch === '0' ? 'zero' : 'one'}">${ch}</span>`;
+    }
+  }
+  display.innerHTML = html;
+
+  // piano roll
+  renderFibPianoRoll(word);
+}
+
+function renderFibPianoRoll(word) {
+  const root = +document.getElementById('rootSelect').value;
+  const roll = document.getElementById('fibPianoRoll');
+  roll.innerHTML = '';
+  const notes = word.split('').map(c => c === '0' ? root : root + 2); // 0→root, 1→major 2nd
+  const max = notes.length > 120 ? 120 : notes.length;
+  for (let i = 0; i < max; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'note-bar';
+    bar.id = 'fb' + i;
+    bar.style.height = (notes[i] === root ? 32 : 52) + 'px';
+    bar.title = midiToName(notes[i]);
+    const label = document.createElement('div');
+    label.className = 'note-label';
+    label.textContent = word[i];
+    bar.appendChild(label);
+    roll.appendChild(bar);
+  }
+  document.getElementById('fibStatusText').textContent = `F(${currentFibN}): ${word.length} chars → ${max} notes shown`;
+}
+
+async function animateFibCheck() {
+  if (!currentFibWord) return;
+  const trimmed = currentFibWord.length > 2
+    ? currentFibWord.slice(0, -2)
+    : currentFibWord;
+
+  // for long words, check first 40 chars to keep animation manageable
+  const display = trimmed.length <= 40 ? trimmed : trimmed.slice(0, 40);
+  const arr = display.split('');
+
+  document.getElementById('fibDequeLog').textContent = 'Starting deque check…';
+  document.getElementById('fibResult').className = 'result-banner';
+  dequeAnimRunning = false; // reset lock so this call goes through
+
+  await animateDequeCheck(arr, 'fibDequeItems', 'fibDequeLog', 'fibResult', 'fibResultText');
+
+  // override result text with full check
+  const fullPal = isPalindrome(trimmed.split(''));
+  const resEl = document.getElementById('fibResult');
+  if (fullPal) {
+    resEl.innerHTML = `<span class="result-icon">✓</span><span>Full trimmed word (${trimmed.length} chars) is a palindrome ✓</span>`;
+    resEl.className = 'result-banner show palindrome';
+  } else {
+    resEl.innerHTML = `<span class="result-icon">✗</span><span>Not a palindrome</span>`;
+    resEl.className = 'result-banner show not-palindrome';
+  }
+}
+
+async function playFibWord() {
+  if (!currentFibWord) return;
+  stopAll();
+  stopFlag = false;
+
+  const root = +document.getElementById('rootSelect').value;
+  const wave = document.getElementById('waveSelect').value;
+  const dur = noteDuration() * 0.5; // eighth notes for fibonacci
+  const ctx = getAudioCtx();
+
+  const word = currentFibWord;
+  const max = Math.min(word.length, 120);
+  const notes = word.slice(0, max).split('').map(c => c === '0' ? root : root + 2);
+
+  document.getElementById('fibDot').className = 'status-dot active';
+  document.getElementById('fibWave').style.display = 'flex';
+  document.getElementById('fibPlayBtn').disabled = true;
+  document.getElementById('fibStopBtn').disabled = false;
+  document.getElementById('fibStatusText').innerHTML =
+    `Playing F(${currentFibN}) — <span style="color:var(--teal)">${max} notes</span>`;
+
+  const bars = document.querySelectorAll('#fibPianoRoll .note-bar');
+
+  for (let i = 0; i < notes.length; i++) {
+    if (stopFlag) break;
+    bars.forEach(b => b.classList.remove('active'));
+    bars[i] && bars[i].classList.add('active');
+    playNote(midiToFreq(notes[i]), ctx.currentTime, dur * 0.9, wave);
+    await sleep(dur * 1000);
+    bars[i] && bars[i].classList.replace('active','played');
+  }
+
+  if (!stopFlag) {
+    document.getElementById('fibDot').className = 'status-dot done';
+    document.getElementById('fibWave').style.display = 'none';
+    document.getElementById('fibStatusText').textContent = 'Done';
+  }
+  document.getElementById('fibPlayBtn').disabled = false;
+  document.getElementById('fibStopBtn').disabled = true;
+}
+
+function stopFib() {
+  stopAll();
+  document.getElementById('fibDot').className = 'status-dot';
+  document.getElementById('fibWave').style.display = 'none';
+  document.getElementById('fibStatusText').textContent = 'Stopped';
+  document.getElementById('fibPlayBtn').disabled = false;
+  document.getElementById('fibStopBtn').disabled = true;
+  document.querySelectorAll('#fibPianoRoll .note-bar').forEach(b => {
+    b.classList.remove('active','played');
+  });
+}
+
+// ─────────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+buildScaleTable();
+updateTempo(document.getElementById('tempoSlider'));
+
+// auto-select Dorian on load to demo the palindrome
+setTimeout(() => {
+  const dorianRow = document.querySelector('#scaleBody tr[data-idx="1"]');
+  if (dorianRow) selectScale(1, dorianRow);
+}, 300);
+</script>
+</body>
+</html>
