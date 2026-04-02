@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 24px;
+            max-width: 1000px;
+            margin: 32px auto;
+            padding: 0 20px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            padding: 32px;
+        }
+
+        /* ── Media area ── */
+        #media-area {
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto 24px;
+        }
+        #album-art {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,247,0.3));
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+        }
+        #sc-container {
+            display: none;
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #sc-container iframe { width: 100%; height: 116px; display: block; }
+
+        /* ── Now playing ── */
+        h1 {
+            text-align: center;
+            font-size: 1.05em;
+            font-weight: 400;
+            color: rgba(255,255,255,0.55);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        #song-title {
+            text-align: center;
+            font-size: 1.6em;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+        #song-artist {
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.95em;
+            margin-bottom: 24px;
+        }
+
+        /* ── Controls ── */
+        #controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            border-radius: 50px;
+            padding: 10px 22px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            white-space: nowrap;
+        }
+        .btn:hover { background: rgba(255,255,255,0.22); transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+        .btn.play {
+            background: linear-gradient(45deg, #00d4ff, #7b2ff7);
+            border: none;
+            padding: 12px 28px;
+            font-size: 1.1em;
+            box-shadow: 0 4px 20px rgba(0,212,255,0.3);
+        }
+        .btn.play:hover { opacity: 0.88; }
+
+        #status-msg {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.82em;
+            color: rgba(255,255,255,0.45);
+            min-height: 18px;
+        }
+
+        /* ── Sidebar ── */
+        #sidebar .panel-header {
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 16px;
+        }
+        #playlist-list {
+            list-style: none;
+            max-height: 320px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+            margin-bottom: 20px;
+        }
+        #playlist-list::-webkit-scrollbar { width: 4px; }
+        #playlist-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+        #playlist-list li {
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.88em;
+            color: rgba(255,255,255,0.7);
+            transition: background 0.15s;
+            border-left: 3px solid transparent;
+            margin-bottom: 2px;
+        }
+        #playlist-list li:hover { background: rgba(255,255,255,0.08); }
+        #playlist-list li.active {
+            background: rgba(0,212,255,0.1);
+            border-left-color: #00d4ff;
+            color: #fff;
+        }
+        #playlist-list li { display: flex; align-items: center; gap: 4px; }
+        #playlist-list li .track-info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #playlist-list li .track-num { color: rgba(255,255,255,0.3); margin-right: 6px; font-size: 0.85em; }
+        #playlist-list li .track-artist { color: rgba(255,255,255,0.4); font-size: 0.85em; }
+        #playlist-list li .btn-play-next,
+        #playlist-list li .btn-remove {
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.25);
+            cursor: pointer;
+            font-size: 0.9em;
+            padding: 2px 5px;
+            border-radius: 4px;
+            transition: color 0.15s, background 0.15s;
+        }
+        #playlist-list li .btn-play-next:hover { color: #00d4ff; background: rgba(0,212,255,0.1); }
+        #playlist-list li .btn-remove:hover { color: #ff6b6b; background: rgba(255,107,107,0.1); }
+
+        /* ── Add Song form ── */
+        #add-song-section { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; }
+        #add-song-section .section-title {
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 12px;
+        }
+        #add-song-section input {
+            width: 100%;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: #fff;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #add-song-section input:focus { border-color: rgba(0,212,255,0.5); }
+        #add-song-section input::placeholder { color: rgba(255,255,255,0.3); }
+        #add-song-section .url-hint {
+            font-size: 0.72em;
+            color: rgba(255,255,255,0.3);
+            margin-bottom: 10px;
+        }
+        #btn-add-song {
+            width: 100%;
+            background: linear-gradient(45deg, rgba(0,212,255,0.2), rgba(123,47,247,0.2));
+            border: 1px solid rgba(0,212,255,0.3);
+            color: #00d4ff;
+            border-radius: 8px;
+            padding: 9px;
+            font-size: 0.88em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #btn-add-song:hover { background: linear-gradient(45deg, rgba(0,212,255,0.3), rgba(123,47,247,0.3)); }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            background: rgba(30,30,50,0.95);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 0.88em;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+            z-index: 200;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0px); }
+
+        @media (max-width: 700px) {
+            #app { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+
+    <!-- Player panel -->
+    <div class="panel" id="player">
+        <div id="media-area">
+            <div id="album-art">🎵</div>
+            <div id="sc-container">
+                <iframe id="sc-iframe" scrolling="no" frameborder="no" allow="autoplay"></iframe>
+            </div>
+        </div>
+
+        <h1>Now Playing</h1>
+        <div id="song-title">—</div>
+        <div id="song-artist">Add a song to get started</div>
+
+        <div id="controls">
+            <button class="btn" id="btn-prev">⏮ Prev</button>
+            <button class="btn play" id="btn-play">▶ Play</button>
+            <button class="btn" id="btn-next">Next ⏭</button>
+            <button class="btn" id="btn-back">↩ Go Back</button>
+            <button class="btn" id="btn-shuffle">🔀 Shuffle</button>
+        </div>
+
+        <div id="status-msg"></div>
+    </div>
+
+    <!-- Playlist sidebar -->
+    <div class="panel" id="sidebar">
+        <div class="panel-header">Playlist</div>
+        <ul id="playlist-list"></ul>
+
+        <div id="add-song-section">
+            <div class="section-title">+ Add Song</div>
+            <input type="text" id="input-title"  placeholder="Title">
+            <input type="text" id="input-artist" placeholder="Artist">
+            <input type="text" id="input-url"    placeholder="SoundCloud URL">
+            <div class="url-hint">e.g. soundcloud.com/artist/track-name</div>
+            <button id="btn-add-song">Add to Playlist</button>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- SoundCloud Widget API -->
+<script src="https://w.soundcloud.com/player/api.js"></script>
+
+<script>
+// ─────────────────────────────────────────────
+//  DSA: Song — circular doubly linked list node
+// ─────────────────────────────────────────────
+class Song {
+    constructor(title, artist, url) {
+        this.title  = title;
+        this.artist = artist;
+        this.url    = url;
+        this.next   = null;
+        this.prev   = null;
+    }
+}
+
+// ─────────────────────────────────────────────
+//  DSA: Playlist — circular doubly linked list
+//       + history stack + play-next queue
+// ─────────────────────────────────────────────
+class Playlist {
+    constructor() {
+        this.head          = null;
+        this.history       = [];
+        this.playNextQueue = [];
+    }
+
+    addSong(song) {
+        if (this.head === null) {
+            this.head = song; song.next = song; song.prev = song;
+        } else {
+            const last     = this.head.prev;
+            this.head.prev = song;
+            last.next      = song;
+            song.prev      = last;
+            song.next      = this.head;
+        }
+    }
+
+    nextSong() { this.head = this.head.next; }
+    prevSong() { this.head = this.head.prev; }
+
+    playCurrent() {
+        this.history.push(this.head);
+        if (this.playNextQueue.length > 0) return this.playNextQueue.shift();
+        return this.head;
+    }
+
+    addToPlayNext(song) { this.playNextQueue.push(song); }
+
+    goBack() {
+        if (this.history.length === 0) return "No more songs.";
+        return this.history.pop();
+    }
+
+    shuffle() {
+        const songs = [];
+        let cur = this.head;
+        do { songs.push(cur); cur = cur.next; } while (cur !== this.head);
+
+        let i = songs.length - 1;
+        while (i > 0) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = songs[j]; songs[j] = songs[i]; songs[i] = temp;
+            i--;
+        }
+
+        songs.forEach(s => { s.next = null; s.prev = null; });
+        this.head = null;
+        songs.forEach(s => this.addSong(s));
+    }
+
+    // Ported from MusicPlayer_substack.ipynb remove_song()
+    removeSong(song) {
+        if (this.head === null) return;                     // Case 1: playlist is empty
+
+        if (this.head.next === this.head) {                 // Case 2: only one song
+            this.head = null;
+        } else if (song === this.head) {                    // Case 3: removing the head
+            const last = this.head.prev;
+            this.head  = this.head.next;
+            last.next  = this.head;
+            this.head.prev = last;
+        } else {                                            // Case 4: removing a non-head song
+            song.prev.next = song.next;
+            song.next.prev = song.prev;
+        }
+
+        // Clean up stale references in history and play-next queue
+        this.history       = this.history.filter(s => s !== song);
+        this.playNextQueue = this.playNextQueue.filter(s => s !== song);
+
+        song.next = null;
+        song.prev = null;
+    }
+
+    toArray() {
+        if (!this.head) return [];
+        const arr = []; let cur = this.head;
+        do { arr.push(cur); cur = cur.next; } while (cur !== this.head);
+        return arr;
+    }
+}
+
+// ─────────────────────────────────────────────
+//  SoundCloud widget
+// ─────────────────────────────────────────────
+let scWidget   = null;
+let hasStarted = false;
+const playlist = new Playlist();
+
+function loadSoundCloud(url) {
+    const iframe   = document.getElementById('sc-iframe');
+    const embedUrl = 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url)
+        + '&auto_play=true&hide_related=true&show_comments=false&show_user=false&visual=false&color=%2300d4ff';
+    iframe.src = embedUrl;
+
+    iframe.onload = () => {
+        if (typeof SC === 'undefined') return;
+        scWidget = SC.Widget(iframe);
+        scWidget.bind(SC.Widget.Events.FINISH, () => {
+            if (playlist.playNextQueue.length > 0) {
+                const next = playlist.playNextQueue.shift();
+                playlist.head = next;
+                loadWithoutHistory(next);
+            } else {
+                playlist.nextSong();
+                loadAndPlay(playlist.head);
+            }
+        });
+        scWidget.bind(SC.Widget.Events.PLAY,  () => setPlayBtn(true));
+        scWidget.bind(SC.Widget.Events.PAUSE, () => setPlayBtn(false));
+    };
+    setPlayBtn(true);
+}
+
+// ─────────────────────────────────────────────
+//  UI helpers
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.remove('show');
+    clearTimeout(toastTimer);
+    void t.offsetWidth; // force reflow so transition replays
+    t.classList.add('show');
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function setStatus(msg) { document.getElementById('status-msg').textContent = msg; }
+
+function setPlayBtn(playing) {
+    document.getElementById('btn-play').textContent = playing ? '⏸ Pause' : '▶ Play';
+}
+
+function updateNowPlaying() {
+    if (!playlist.head) {
+        document.getElementById('song-title').textContent  = '—';
+        document.getElementById('song-artist').textContent = 'Add a song to get started';
+        document.getElementById('album-art').style.display    = 'flex';
+        document.getElementById('sc-container').style.display = 'none';
+        return;
+    }
+    const s = playlist.head;
+    document.getElementById('song-title').textContent     = s.title;
+    document.getElementById('song-artist').textContent    = s.artist;
+    document.getElementById('album-art').style.display    = 'none';
+    document.getElementById('sc-container').style.display = 'block';
+}
+
+function updateSidebarHighlight() {
+    if (!playlist.head) return;
+    document.querySelectorAll('#playlist-list li').forEach(li => {
+        li.classList.toggle('active', li.dataset.title === playlist.head.title);
+    });
+    const active = document.querySelector('#playlist-list li.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function rebuildSidebar() {
+    const ul = document.getElementById('playlist-list');
+    ul.innerHTML = '';
+    playlist.toArray().forEach((song, idx) => {
+        const li = document.createElement('li');
+        li.dataset.title = song.title;
+
+        const info = document.createElement('span');
+        info.className = 'track-info';
+        info.innerHTML = `<span class="track-num">${idx + 1}</span>${song.title} <span class="track-artist">— ${song.artist}</span>`;
+
+        const playNextBtn = document.createElement('button');
+        playNextBtn.className = 'btn-play-next';
+        playNextBtn.textContent = '⏩';
+        playNextBtn.title = 'Play next';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove';
+        removeBtn.textContent = '✕';
+        removeBtn.title = 'Remove song';
+
+        li.onclick = (e) => {
+            if (e.target.closest('.btn-play-next')) { onAddToPlayNext(song); return; }
+            if (e.target.closest('.btn-remove'))    { onRemoveSong(song);    return; }
+            jumpToSong(song);
+        };
+
+        li.appendChild(info);
+        li.appendChild(playNextBtn);
+        li.appendChild(removeBtn);
+        ul.appendChild(li);
+    });
+    updateSidebarHighlight();
+}
+
+function onAddToPlayNext(song) {
+    playlist.addToPlayNext(song);
+    showToast(`Playing next: ${song.title}`);
+}
+
+function onRemoveSong(song) {
+    const wasPlaying = playlist.head === song;
+    const nextSong   = song.next !== song ? song.next : null; // save next before removal
+
+    playlist.removeSong(song);
+    rebuildSidebar();
+
+    if (!playlist.head) {
+        // Playlist is now empty
+        hasStarted = false;
+        if (scWidget) { try { scWidget.pause(); } catch(e) {} }
+        updateNowPlaying();
+        setPlayBtn(false);
+    } else if (wasPlaying) {
+        // Removed the currently playing song — load the next one
+        playlist.head = nextSong;
+        loadAndPlay(playlist.head);
+    }
+
+    showToast(`Removed: ${song.title}`);
+}
+
+// ─────────────────────────────────────────────
+//  Core: load + play
+// ─────────────────────────────────────────────
+function loadAndPlay(song) {
+    playlist.history.push(song);        // push every navigation onto the history stack
+    loadWithoutHistory(song);
+}
+
+function loadWithoutHistory(song) {     // used by goBack() so it doesn't push to history
+    if (scWidget) { try { scWidget.pause(); } catch(e) {} }
+    updateNowPlaying();
+    updateSidebarHighlight();
+    setStatus('');
+    hasStarted = true;
+    loadSoundCloud(song.url);
+}
+
+// ─────────────────────────────────────────────
+//  Button handlers
+// ─────────────────────────────────────────────
+function onPlayPause() {
+    if (!playlist.head) { showToast('Add a song first'); return; }
+    if (!hasStarted) {
+        loadAndPlay(playlist.head);
+        return;
+    }
+    if (scWidget) scWidget.toggle();
+}
+
+function onPrev() {
+    if (!playlist.head) return;
+    playlist.prevSong();
+    loadAndPlay(playlist.head);
+}
+
+function onNext() {
+    if (!playlist.head) return;
+    if (playlist.playNextQueue.length > 0) {
+        const next = playlist.playNextQueue.shift();
+        playlist.head = next;
+        loadWithoutHistory(next);
+    } else {
+        playlist.nextSong();
+        loadAndPlay(playlist.head);
+    }
+}
+
+function onGoBack() {
+    const result = playlist.goBack();
+    if (typeof result === 'string') {
+        showToast(result);
+    } else {
+        playlist.head = result;
+        loadWithoutHistory(playlist.head);  // don't push to history when going back
+        setStatus(`Went back to: ${result.title}`);
+    }
+}
+
+function onShuffle() {
+    if (!playlist.head) return;
+    playlist.shuffle();
+    rebuildSidebar();
+    loadAndPlay(playlist.head);
+    setStatus('Shuffled!');
+}
+
+function jumpToSong(song) {
+    let cur = playlist.head;
+    do {
+        if (cur === song) { playlist.head = cur; break; }
+        cur = cur.next;
+    } while (cur !== playlist.head);
+    loadAndPlay(playlist.head);
+}
+
+// ─────────────────────────────────────────────
+//  Add Song form
+// ─────────────────────────────────────────────
+function onAddSong() {
+    const title  = document.getElementById('input-title').value.trim();
+    const artist = document.getElementById('input-artist').value.trim() || 'Unknown';
+    const url    = document.getElementById('input-url').value.trim();
+
+    if (!title || !url) { showToast('Please enter a title and URL'); return; }
+    if (!url.includes('soundcloud.com/')) { showToast('Please enter a SoundCloud URL'); return; }
+
+    playlist.addSong(new Song(title, artist, url));
+    rebuildSidebar();
+
+    document.getElementById('input-title').value  = '';
+    document.getElementById('input-artist').value = '';
+    document.getElementById('input-url').value    = '';
+
+    showToast(`Added: ${title}`);
+}
+
+document.getElementById('input-url').addEventListener('keydown', e => {
+    if (e.key === 'Enter') onAddSong();
+});
+
+// ─────────────────────────────────────────────
+//  Wire buttons + init
+// ─────────────────────────────────────────────
+document.getElementById('btn-play').onclick    = onPlayPause;
+document.getElementById('btn-prev').onclick    = onPrev;
+document.getElementById('btn-next').onclick    = onNext;
+document.getElementById('btn-back').onclick    = onGoBack;
+document.getElementById('btn-shuffle').onclick = onShuffle;
+document.getElementById('btn-add-song').onclick = onAddSong;
+
+rebuildSidebar();
+updateNowPlaying();
+</script>
+</body>
+</html>
